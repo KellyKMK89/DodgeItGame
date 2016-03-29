@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MyGame</title>
+    <style>
+        canvas{
+            position: absolute;
+            margin: auto;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+<noscript>
+    <p>For full functionality of this page it is necessary to enable JavaScript.
+        Here are the <a href="http://www.enable-javascript.com/" target="_blank">
+            instructions how to enable JavaScript in your web browser</a>.</p>
+</noscript>
+<script>
+    /*TODO
+    * Save and show the high score*/
+    var WIDTH = 480, HEIGHT = 600;
+    var LeftArrow = 37, RightArrow = 39, SpaceBar = 32;
+    var canvas, g, keystate, player;
+    var frames = 0, frameRate = 20;
+    var speed = 5, maxSpeed = 12;
+    var score = -6;
+    var currentstate;
+
+    states = {
+        Splash: 0, Game: 1, Score: 2
+    };
+
+    player = {
+        x: null,
+        y: null,
+        width: 30,
+        height: 30,
+
+        update: function(){
+
+            if(keystate[LeftArrow]){
+                if(this.x >= 5){
+                    this.x -=5;
+                }
+            }
+            if(keystate[RightArrow])
+                if(this.x<= WIDTH - this.width){
+                    this.x +=5;
+                }
+        },
+        draw: function(){
+            g.fillRect(this.x, this.y, this.width, this.height);
+        }
+    };
+
+    map = {
+        _y: 0,
+        _obstacles: [],
+
+        reset: function(){
+            this._obstacles = [];
+        },
+
+        update: function(){
+            //add new obstacles each frameRate of frames
+            if(frames % frameRate === 0){
+                score = score + 1;
+                var _x = 400*(Math.random());
+                //set the minimum & maximum width for a falling block
+                var _w = Math.floor(Math.random() * (150 - 40))+ 40;
+                this._obstacles.push({
+                    x: _x,
+                    y: 10,
+                    width: _w,
+                    height: 20
+                });
+            }
+            //Collision detection
+            var AABBIntersect = function(ax, ay, aw, ah, bx, by, bw, bh){
+                return ax < bx+bw && ay < by+bh && bx < ax+aw && by < ay+ah;
+            };
+
+            //move obstacles and remove from array if outside of canvas
+            for(var i = 0, len = this._obstacles.length; i < len; i++){
+                var o = this._obstacles[i];
+                o.y += speed;
+
+                if(AABBIntersect(player.x, player.y, player.width, player.height,
+                                o.x, o.y, o.width, o.height)){
+                    currentstate = states.Score;
+                }
+                if(o.x < -o.height){
+                    this._obstacles.splice(i,1);
+                    i--;
+                    len--;
+                }
+            }
+        },
+        draw: function(){
+            for(var i = 0, len = this._obstacles.length; i < len; i ++){
+                var o = this._obstacles[i];
+                g.fillRect(o.x, o.y, o.width, o.height);
+            }
+        }
+    };
+
+    function main(){
+        canvas = document.createElement("canvas");
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+        g = canvas.getContext("2d");
+        document.body.appendChild(canvas);
+
+        keystate = {};
+        document.addEventListener("keydown", function(evt){
+            keystate[evt.keyCode] = true;
+        }) ;
+
+        document.addEventListener("keyup", function(evt){
+            delete keystate[evt.keyCode];
+        }) ;
+
+        init();
+        var loop = function(){
+            update();
+            draw();
+            window.requestAnimationFrame(loop, canvas);
+        };
+        window.requestAnimationFrame(loop, canvas);
+    }
+
+    function init(){
+        player.x = WIDTH/2;
+        player.y = HEIGHT-player.height;
+        currentstate = states.Splash;
+    }
+
+    function incSpeed(){
+        if(speed <= maxSpeed) {
+            speed = speed += 0.001;
+        }
+    }
+
+    function update(){
+        frames++;
+        //score+= 0.1;
+        setTimeout(incSpeed, 30000);
+        if(currentstate === states.Game){
+            map.update();
+            player.update();
+        }
+    }
+    function draw(){
+        g.fillRect(0,0, WIDTH, HEIGHT);
+        g.save();
+
+        if(currentstate === states.Splash){
+            g.fillStyle = "#fff";
+            g.font = "30px Arial";
+            g.fillText("Dodge It!",180,200);
+            g.fillText("Press Spacebar to start", 80, 350);
+            if (keystate[SpaceBar]){
+                currentstate = states.Game;
+            }
+        }
+        if(currentstate === states.Game) {
+            g.fillStyle = "#ff1";
+            player.draw();
+            g.fillStyle = "#fff";
+            map.draw();
+            g.font = "30px Arial";
+            g.fillText("SCORE: ", 150, 50);
+            if (score >= 0) {
+                g.fillText(score.toString(), 280, 50);
+            }
+        }
+        if(currentstate === states.Score){
+            g.fillStyle = "#ff1";
+            g.font = "30px Arial";
+            g.fillText("Game Over", 160, 200);
+            g.fillText("SCORE: " + score.toString(), 170, 350)
+        }
+
+        g.restore();
+    }
+    main();
+</script>
+</body>
+</html>
